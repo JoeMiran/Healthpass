@@ -1,0 +1,32 @@
+# -----------------------------------------------------------------------------
+# HealthPass - ficheiros que NAO devem ser versionados no Git
+# -----------------------------------------------------------------------------
+
+# Pasta de compilacao gerada pelo Maven (classes, jar, relatorios de testes)
+target/
+
+# Chaves criptograficas privadas e publicas dos utilizadores.
+# NUNCA devem ir para o repositorio: a chave privada e um segredo.
+*.priv
+*.pub
+
+# Dados locais gerados em tempo de execucao (blockchain, credenciais, etc.)
+data/*.bc
+data/*.json
+data/*.dat
+
+# Ficheiros do IDE (NetBeans, IntelliJ, Eclipse, VS Code)
+nbproject/private/
+build/
+dist/
+*.class
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+.vscode/
+
+# Ficheiros do sistema operativo
+.DS_Store
+Thumbs.db

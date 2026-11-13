@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    ============================================================================
+    HealthPass - Sistema de Identidade Digital Descentralizada para a Saúde
+    ============================================================================
+
+    Este ficheiro (pom.xml) e o "Project Object Model" do Apache Maven.
+    O Maven usa-o para saber:
+      - que versao de Java usar;
+      - que bibliotecas externas (dependencias) o projeto precisa;
+      - como compilar, testar e empacotar a aplicacao.
+
+    Comandos uteis (executar na pasta HealthPass):
+      mvn compile     -> compila o codigo para a pasta target/classes
+      mvn test        -> compila e corre os testes unitarios
+      mvn package     -> gera um ficheiro .jar na pasta target/
+      mvn clean       -> apaga a pasta target/ (limpeza)
+
+    NOTA DIDATICA: as dependencias sao descarregadas automaticamente da
+    Internet na primeira compilacao e guardadas na pasta ~/.m2 (repositorio
+    local). Sem Internet, a primeira compilacao falha.
+    ============================================================================
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <!-- Versao do modelo do POM (nao confundir com a versao do projeto) -->
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Identificacao do projeto: grupo, artefacto e versao -->
+    <groupId>pt.healthpass</groupId>
+    <artifactId>healthpass</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>HealthPass</name>
+    <description>Identidade digital descentralizada (Blockchain ID) aplicada a saude.</description>
+
+    <properties>
+        <!--
+            Usamos Java 21 (LTS) como linguagem alvo.
+            "maven.compiler.release" garante que o codigo so usa APIs
+            disponiveis no Java 21, mesmo que o JDK instalado seja mais recente.
+        -->
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Versoes das dependencias (centralizadas para facilitar atualizacoes) -->
+        <jackson.version>2.17.2</jackson.version>
+        <junit.version>5.10.2</junit.version>
+    </properties>
+
+    <dependencies>
+        <!--
+            Jackson: biblioteca de serializacao/desserializacao JSON.
+            No HealthPass e usada para as mensagens P2P e para o formato
+            canonico das credenciais, evitando a desserializacao insegura
+            de objetos Java (java.io.ObjectInputStream) usada na TemplarCoin.
+        -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+
+        <!--
+            JUnit 5: framework de testes unitarios.
+            O "scope test" significa que so esta disponivel na compilacao
+            e execucao dos testes, nunca no codigo de producao.
+        -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!--
+                Plugin do compilador: aplica a versao de Java definida acima.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+            </plugin>
+
+            <!--
+                Plugin dos testes: permite ao Maven encontrar e correr
+                os testes JUnit 5 colocados em src/test/java.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
