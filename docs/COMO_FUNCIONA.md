@@ -1,241 +1,302 @@
-# Como executar e entender o HealthPass
+# Como apresentar e demonstrar o HealthPass
 
-Este guia foi escrito para quem ainda não conhece o projeto. Leia a secção 2
-para perceber a ligação com a proposta do relatório. Depois siga os passos da
-GUI; cada passo explica o que carregar e o que o programa faz por trás.
+Este guia acompanha a interface atual e foi pensado para preparar uma
+apresentação do projeto. Explica a ideia, o que dizer em cada ecrã, os passos a
+executar e os resultados que se devem observar. O HealthPass é uma prova de
+conceito académica com dados fictícios; não é um sistema hospitalar.
 
-Para localizar e estudar as classes, abra também
-[Arquitetura do HealthPass](ARQUITETURA.md). Esse documento contém o diagrama de
-classes completo, a explicação técnica do blockchain e os caminhos exatos do
-código.
+Para estudar a implementação por classes, consulte também
+[Arquitetura do HealthPass](ARQUITETURA.md).
 
-## 1. Qual é a ideia do projeto?
+## 1. A ideia em poucas palavras
 
-Imagine que o Hospital A emite um comprovativo de vacinação e o Hospital B
-precisa confirmar que o documento é autêntico e não foi alterado. Se os dois
-dependerem de uma única base de dados central, o serviço central controla o
-registo e pode ser um ponto único de falha. O HealthPass experimenta outra
-abordagem: vários nós autorizados guardam cópias de um registo comum e usam
-regras criptográficas para confirmar os eventos.
+O cenário é este: o **Hospital A** emite uma credencial fictícia de vacinação
+para um **titular**. Mais tarde, o titular apresenta essa credencial ao
+**Hospital B**, que verifica se foi assinada por um emissor confiável, se o
+conteúdo não foi alterado, se continua ativa e se não expirou.
 
-O documento completo fica fora da blockchain. A cadeia guarda a referência
-técnica da credencial, os DIDs e o respetivo hash. O hash funciona como uma
-impressão digital: se o conteúdo mudar, o hash calculado já não coincide. A
-assinatura digital permite verificar que a credencial foi assinada pela chave
-privada do emissor. A blockchain não prova que uma vacinação aconteceu na vida
-real; confirma apenas a integridade técnica e o registo feito pelo emissor
-configurado.
+O documento completo da credencial fica fora da blockchain, num ficheiro local
+da sessão. A blockchain guarda o identificador, os DIDs do emissor e do
+titular, o hash da credencial e os eventos técnicos de emissão e revogação. O
+hash é uma impressão digital do documento: uma alteração ao conteúdo produz
+outro hash. A assinatura digital permite confirmar que o emissor configurado
+assinou a credencial.
 
-## 2. Porque a janela não parece igual ao relatório?
+A aplicação inicia três nós TCP que replicam a cadeia. Um bloco é confirmado
+quando há votos suficientes dos validadores: neste protótipo, são necessários
+dois votos em três. Assim, o Hospital B pode comparar a credencial apresentada
+com um registo replicado, em vez de confiar apenas numa cópia local do emissor.
 
-O relatório descreve a **arquitetura pretendida**: Hospital A/emissor, titular
-com carteira própria, Hospital B/verificador e nós operados por instituições
-distintas. A aplicação que existe agora é uma **demonstração simplificada
-desse percurso**:
+**O que o sistema prova:** certas propriedades técnicas do documento e do
+registo. **O que não prova:** que a vacinação ocorreu na realidade ou que é
+clinicamente adequada.
 
-- há uma só janela com separadores chamados **Emissor**, **Titular**,
-  **Verificador** e **Rede**;
-- a janela usa identidades de demonstração pré-configuradas, sem login ou
-  escolha de instituição;
-- os três nós TCP são iniciados localmente pela aplicação, na mesma máquina e
-  na mesma JVM, embora cada um tenha porta e ficheiro de cadeia próprios;
-- o separador Titular mostra a credencial atual em JSON, mas não é ainda uma
-  carteira independente que recebe/importa uma credencial;
-- o Verificador verifica o mesmo objeto de credencial da sessão. Ainda não há
-  transferência real de credencial entre dois computadores;
-- os ecrãs antigos `IssuerView`, `HolderWalletView`, `VerifierView` e
-  `AdminView` são esqueletos. O painel funcional é `HealthPassDashboard`.
+## 2. O que é a aplicação e o que não é
 
-Portanto, os separadores **representam papéis** do relatório; não são quatro
-aplicações nem quatro instituições autónomas. O teste
-`P2PMultiProcessIntegrationTest` demonstra nós em processos Java separados,
-mas ainda na mesma máquina. Consulte a tabela de diferenças no documento de
-[Arquitetura](ARQUITETURA.md).
+A GUI tem cinco áreas, acessíveis pela navegação à esquerda:
 
-## 3. Preparar e iniciar
+| Área | Papel representado | Para que serve |
+|---|---|---|
+| **Visão geral** | Apresentação do fluxo | Resumo da sessão, estado da credencial, altura da cadeia e registo de atividade. |
+| **Emissor · Hospital A** | Emissor | Preencher dados fictícios, emitir e assinar a credencial, ou revogá-la. |
+| **Carteira · Titular** | Titular | Ver a credencial da sessão, preparar a apresentação JSON e copiá-la. |
+| **Verificação · Hospital B** | Verificador | Colar a apresentação recebida e ver o resultado de cada validação. |
+| **Rede e validadores** | Administrador técnico / validadores | Consultar altura, pendências, validade e hash final dos três nós. |
 
-Precisa de JDK 21 ou superior e Maven 3.9 ou superior. Abra um terminal na raiz
-do projeto `HealthPass` e confirme as instalações:
+Estas áreas são papéis de uma só aplicação e partilham a mesma sessão de
+demonstração. O JSON é copiado e colado localmente para representar a passagem
+da credencial do titular ao verificador. Não há ainda duas aplicações,
+utilizadores autenticados, hospitais independentes ou transferência entre
+computadores. Os três nós da GUI também correm na mesma máquina e JVM, embora
+tenham portas e ficheiros de cadeia próprios.
 
-```bash
-java -version
-mvn -version
-```
+O relatório `computacao_distribuida.pdf` descreve o objetivo arquitetural mais
+completo. A GUI demonstra o fluxo principal desse objetivo, mas não todas as
+funcionalidades previstas para um produto real. Não use dados de pacientes.
 
-Para iniciar a janela gráfica:
+## 3. Preparação e arranque
+
+Requisitos: JDK 21 ou superior e Maven 3.9 ou superior. Na pasta do projeto:
 
 ```bash
 mvn exec:java -Dexec.mainClass=pt.healthpass.app.HealthPassApplication
 ```
 
-Na primeira execução, Maven pode precisar de Internet para descarregar o
-plugin e as dependências. O arranque gera chaves RSA temporárias para a sessão,
-cria três blockchains locais com o bloco génesis e regista o emissor e o
-titular de demonstração. Aguarde até a janela indicar que a rede está pronta.
+No arranque, a aplicação cria uma sessão nova, gera chaves temporárias,
+inicia três nós TCP e regista o emissor e o titular. Aguarde até o indicador
+superior mostrar **REDE CONVERGENTE · 3 NÓS**. A atividade da Visão geral deve
+mostrar que as identidades de demonstração foram registadas.
 
-Se estiver num terminal sem interface gráfica, inicie o modo de texto:
+O primeiro bloco útil fica na **altura 1**. Depois da emissão, espera-se a
+altura **2**; depois da revogação, a altura **3**. Todos os nós devem apresentar
+a mesma altura e o mesmo hash final. Uma sessão nova é criada em cada arranque;
+as chaves ficam em memória e não são reutilizadas na próxima execução.
+
+## 4. Roteiro curto para apresentar o projeto
+
+Pode começar com esta explicação:
+
+> “O HealthPass é um protótipo académico de identidade digital para saúde. Vou
+> mostrar como um emissor assina uma credencial fictícia, como o titular a
+> apresenta e como outro papel verifica a assinatura, a integridade e o estado
+> da credencial usando um registo replicado por três nós. A interface reúne os
+> papéis numa única máquina para fins de demonstração.”
+
+Depois percorra as áreas pela ordem abaixo. Diga o que está a fazer e aponte o
+resultado visível antes de passar ao ecrã seguinte.
+
+## 5. Demonstração passo a passo
+
+### Ecrã 1 — Visão geral: explicar a sessão
+
+**O que se vê:**
+
+- **Credencial da sessão:** fica sem valor até se emitir a primeira credencial;
+- **Estado atual:** começa como “SEM CREDENCIAL”, depois indica “ATIVA” ou
+  “REVOGADA”;
+- **Altura da cadeia:** número do bloco mais recente;
+- **Percurso da credencial:** atalhos para emissor, titular, verificador e rede;
+- **Atividade da sessão:** mensagens sobre as operações concluídas.
+
+**O que dizer:**
+
+> “A rede arranca com três validadores. O primeiro bloco útil regista as
+> identidades de demonstração do emissor e do titular. A altura e o hash são
+> indicadores da versão da cadeia; se os três nós coincidirem, as réplicas
+> estão convergentes.”
+
+Não é necessário começar por ler o hash completo. Explique que é um resumo
+criptográfico e mostre a igualdade entre os nós mais tarde, no ecrã da Rede.
+
+### Ecrã 2 — Emissor · Hospital A: criar e assinar
+
+**Campos do ecrã:**
+
+- **Código fictício da vacina:** texto de demonstração, inicialmente
+  `VACINA-DEMO-A`;
+- **Data de administração:** data sintética no formato `AAAA-MM-DD`;
+- **DID do emissor e DID do titular:** identificadores técnicos sem nome ou
+  número de utente;
+- **Emitir e confirmar na rede:** cria a credencial e submete a referência à
+  rede;
+- **Revogar credencial:** regista um evento de revogação para a credencial
+  atual;
+- **Resultado da emissão:** mostra o identificador criado.
+
+**Demonstração:** mantenha os valores de exemplo e carregue **Emitir e
+confirmar na rede**. Aguarde a operação terminar.
+
+**O que acontece:** o sistema cria um identificador único, inclui os campos da
+credencial, assina-os com a chave privada temporária do emissor e guarda o
+documento completo em `credentials/` dentro da sessão. Depois calcula o hash,
+cria uma transação com os dados técnicos mínimos, propaga-a aos nós e pede a
+confirmação de um bloco por quorum 2/3.
+
+**O que esperar:** o resultado mostra o ID `cred-…`; na Visão geral o estado
+passa a **ATIVA** e a altura deve passar de 1 para 2. Na área de atividade
+aparece a confirmação da emissão.
+
+**O que dizer:**
+
+> “O Hospital A assina a credencial antes de a registar. O ficheiro completo
+> fica off-chain. A blockchain recebe uma referência e um hash, não o
+> documento de vacinação completo. Os validadores confirmam a transação por
+> quorum.”
+
+### Ecrã 3 — Carteira · Titular: preparar a apresentação
+
+**O que se vê:** resumo da credencial guardada nesta sessão, botão
+**Preparar apresentação**, botão **Copiar JSON** e a representação JSON.
+
+Carregue **Preparar apresentação**. A área mostra o JSON da credencial
+assinada. Carregue **Copiar JSON** para o passar à área de transferência.
+
+**O que dizer:**
+
+> “O titular apresenta o documento que recebeu. Nesta versão, a carteira é
+> simulada dentro da mesma aplicação: o JSON representa a informação que seria
+> partilhada com o Hospital B.”
+
+O JSON contém a assinatura e os campos da credencial. Não o confunda com um
+registo on-chain; ele é a apresentação off-chain do titular.
+
+### Ecrã 4 — Verificação · Hospital B: validar o documento apresentado
+
+No painel **Credencial recebida**, carregue **Colar da área de transferência**
+(ou cole o texto JSON). Em seguida, carregue **Verificar apresentação
+recebida**.
+
+O painel mostra um resultado global e cinco verificações independentes:
+
+| Verificação | O que confirma | Resultado esperado antes da revogação |
+|---|---|---|
+| Assinatura do emissor | A assinatura corresponde à chave pública registada do emissor. | Confirmado |
+| Hash corresponde ao registo | O conteúdo apresentado tem o mesmo hash da emissão registada. | Confirmado |
+| Emissor autorizado | O DID e a chave do emissor são confiáveis nesta demonstração. | Confirmado |
+| Credencial ativa | Existe emissão e não existe revogação válida para este ID. | Confirmado |
+| Dentro do prazo de validade | A data atual está entre a emissão e a expiração. | Confirmado |
+
+Antes de revogar, o resultado global deve ser **CREDENCIAL VÁLIDA**. Explique
+que “válida” quer dizer tecnicamente válida segundo estas cinco regras, não
+que o sistema comprovou um facto clínico.
+
+**Pequena experiência opcional de integridade:** antes de revogar, altere no
+JSON recebido o valor de `vaccineCode` e verifique novamente. A assinatura e o
+hash deverão falhar, pelo que o resultado será **REJEITADA**. Depois cole outra
+vez o JSON original copiado da carteira para continuar a demonstração. Não
+altere os outros campos se quiser manter o teste simples.
+
+### Ecrã 5 — Rede e validadores: mostrar a replicação
+
+**O que se vê:** total de validadores, regra de consenso PoA 2/3, altura atual e
+texto técnico dos três nós, incluindo porta, pendentes, validade da cadeia e
+hash final. O botão **Atualizar estado dos nós** volta a consultar o estado.
+
+Após a emissão, confirme que A, B e C têm altura 2, zero transações pendentes,
+cadeia válida e o mesmo hash final.
+
+**O que dizer:**
+
+> “Cada nó mantém uma cópia da cadeia. A emissão foi propagada e confirmada; a
+> coincidência da altura e do hash final mostra que estas três réplicas
+> chegaram ao mesmo estado. Nesta interface, os nós são locais e não
+> representam três hospitais ligados pela Internet.”
+
+Se uma linha não coincidir imediatamente, atualize o estado e aguarde a
+propagação terminar.
+
+### Ecrãs 6 e 7 — Revogar e verificar novamente
+
+Volte a **Emissor · Hospital A** e carregue **Revogar credencial**. A aplicação
+acrescenta um evento de revogação à cadeia; não apaga a emissão nem modifica a
+assinatura da credencial. A altura deve passar de 2 para 3.
+
+Volte a **Verificação · Hospital B**. O JSON original deve continuar no painel
+de entrada. Carregue **Verificar apresentação recebida** outra vez.
+
+**Resultado esperado:** assinatura, hash, autorização e validade continuam
+confirmados; **Credencial ativa** falha; o resultado global passa a
+**REJEITADA**. Na Visão geral, o estado também deve indicar **REVOGADA**.
+
+**O que dizer:**
+
+> “Revogar não apaga o histórico. A rede regista um novo evento. Por isso, o
+> documento ainda tem uma assinatura e um hash corretos, mas já não é aceite
+> porque o estado consultado na cadeia indica revogação.”
+
+## 6. Vocabulário para responder a perguntas
+
+- **DID:** identificador descentralizado. Neste protótipo identifica os papéis
+  sem embutir dados pessoais, por exemplo `did:healthpass:issuer-demo-01`.
+- **Chave privada:** usada pelo emissor para assinar. Fica em memória na sessão
+  e não é enviada aos validadores.
+- **Chave pública:** permite verificar a assinatura e está associada à
+  identidade registada.
+- **Assinatura:** prova criptográfica de que os dados assinados correspondem à
+  chave privada do emissor. Não prova que os dados clínicos são verdadeiros.
+- **Hash SHA-256:** resumo determinístico usado para detetar alterações e
+  comparar a apresentação com a referência registada.
+- **Bloco e cadeia:** um bloco agrupa transações e aponta para o hash do bloco
+  anterior. A alteração de um bloco quebra a validação da cadeia.
+- **Árvore de Merkle:** resume as transações de um bloco numa raiz que pode ser
+  recalculada para detetar alterações.
+- **P2P:** os nós enviam mensagens diretamente aos peers por TCP; não há um
+  servidor central a encaminhar as mensagens nesta topologia de demonstração.
+- **PoA, quorum 2/3:** validadores previamente conhecidos assinam votos. Dois
+  votos em três são suficientes para aceitar um bloco neste modelo simplificado.
+- **On-chain / off-chain:** a blockchain guarda referências e eventos técnicos;
+  a credencial completa fica em ficheiro local.
+
+## 7. Fecho recomendado para a apresentação
+
+Pode terminar assim:
+
+> “O protótipo demonstra o ciclo técnico de emissão, apresentação, verificação
+> e revogação, usando assinatura digital, SHA-256, blockchain, Merkle, quorum
+> e comunicação P2P. A interface representa os papéis do cenário, mas ainda é
+> uma demonstração local: não tem carteiras independentes, hospitais remotos ou
+> integração clínica. A rede confirma a integridade e o estado registado, não
+> a verdade médica da informação.”
+
+## 8. Execução pelo terminal
+
+Para iniciar sem janela gráfica:
 
 ```bash
 mvn exec:java -Dexec.mainClass=pt.healthpass.app.HealthPassApplication -Dexec.args=--cli
 ```
 
-O modo texto executa o mesmo fluxo de identidade/credencial/rede. Não é preciso
-escolher portas: o programa procura portas TCP livres para os três nós.
+Escreva um comando por vez:
 
-## 4. Demonstração gráfica, passo a passo
-
-### Passo A — confirmar que a rede começou
-
-Quando aparecer **Rede pronta**, veja a área de registo. Ela mostra o caminho
-da sessão e a altura/hash dos nós. Logo após o arranque, os nós devem ter a
-mesma altura e o mesmo hash final. A primeira altura contém as duas
-transações de registo de identidade (emissor e titular), confirmadas num bloco
-por quorum.
-
-### Passo B — emitir como Hospital A
-
-1. Abra o separador **Emissor**.
-2. Deixe ou altere o código fictício, por exemplo `VACINA-DEMO-A`.
-3. Use uma data no formato `AAAA-MM-DD`. O campo começa preenchido com a data
-   atual; pode mantê-la.
-4. Carregue **Emitir e confirmar** e aguarde a mensagem de conclusão.
-
-O sistema cria um ID aleatório para a credencial, assina os seus campos com a
-chave do emissor, guarda o documento completo num ficheiro local e cria uma
-transação on-chain com ID, DIDs e hash. A transação é enviada aos outros nós.
-O proponente da altura prepara um bloco; votos RSA dos validadores formam
-quorum de dois em três. Depois da confirmação, a altura esperada passa de 1
-para 2 e os três nós mostram o mesmo hash final.
-
-Não introduza dados reais de pacientes. A aplicação não é um sistema clínico.
-
-### Passo C — apresentar como titular
-
-1. Abra **Titular**.
-2. Carregue **Mostrar apresentação da credencial**.
-
-O JSON apresentado é a credencial completa, incluindo os dados sintéticos e a
-assinatura. Nesta demonstração, o titular e o verificador usam o mesmo
-programa; o JSON é uma visualização da apresentação, não uma transferência
-para outro computador. O documento completo está no armazenamento local
-off-chain.
-
-### Passo D — verificar como Hospital B
-
-1. Abra **Verificador**.
-2. Carregue **Verificar última credencial**.
-
-Antes da revogação, todas estas verificações devem estar verdadeiras:
-
-| Verificação mostrada | Em palavras simples |
+| Comando | Ação |
 |---|---|
-| Assinatura válida | A chave pública do emissor confirma a assinatura RSA. |
-| Hash corresponde | O hash do documento apresentado coincide com o hash registado no bloco. |
-| Emissor autorizado | O DID do emissor está registado e consta da lista de confiança da demonstração. |
-| Credencial ativa | A cadeia não contém revogação válida para esse ID. |
-| Dentro da validade | As datas da credencial não expiraram. |
-
-O resultado **VÁLIDA** quer dizer válida tecnicamente segundo estas regras. Não
-é uma avaliação clínica nem prova médica independente.
-
-### Passo E — ver estado dos nós
-
-Abra **Rede** e carregue **Atualizar estado dos nós**. Compare altura, hash e
-validade da cadeia. Quando todos têm a mesma altura/hash, as réplicas chegaram
-ao mesmo estado. Cada nó grava a sua própria cadeia, embora os três estejam
-nesta demonstração na mesma máquina.
-
-### Passo F — revogar e verificar outra vez
-
-1. Volte a **Emissor** e carregue **Revogar última**.
-2. Aguarde a confirmação e abra **Verificador**.
-3. Verifique de novo.
-
-A nova transação de revogação fica num novo bloco (a altura esperada passa para
-3). A assinatura e o hash do documento continuam corretos, mas **Credencial
-ativa** passa a falso e o resultado global passa a **REJEITADA**. A blockchain
-não apaga o evento de emissão; acrescenta o evento que altera o estado.
-
-## 5. O que cada componente está a fazer
-
-1. **DID e identidade:** `did:healthpass:issuer-demo-01` e
-   `did:healthpass:holder-demo-01` são identificadores técnicos. Não contêm
-   nomes nem números de utente.
-2. **Assinatura:** `SHA256withRSA` combina SHA-256 e RSA. O emissor assina com a
-   chave privada; o verificador confirma com a chave pública. A chave privada
-   não é transmitida pela rede.
-3. **Hash:** SHA-256 gera um resumo de tamanho fixo. O mesmo conteúdo gera o
-   mesmo resumo; se se alterar um campo, a verificação de integridade falha.
-4. **Bloco:** agrupa transações e contém o hash do bloco anterior. Cada bloco
-   fica ligado ao que veio antes.
-5. **Merkle Tree:** resume as transações de um bloco numa raiz. Alterar uma
-   transação muda a raiz e faz o bloco falhar na validação.
-6. **P2P:** cada nó envia mensagens diretamente aos peers por TCP. Não existe
-   um servidor central a encaminhar todas as mensagens nesta topologia local.
-7. **Consenso PoA:** validadores previamente autorizados assinam votos; para
-   esta demonstração, dois votos em três permitem aceitar o bloco.
-8. **On-chain/off-chain:** a cadeia guarda a referência/hash e eventos; a
-   credencial completa fica em ficheiro local. Um hash não torna dados
-   pessoais anónimos, por isso a aplicação usa valores fictícios.
-
-O diagrama de sequência, o diagrama de classes e a localização de cada
-componente estão em [Arquitetura](ARQUITETURA.md).
-
-## 6. Como usar pelo terminal
-
-Depois de arrancar com `--cli`, escreva um comando por vez:
-
-| Escreva | O que acontece |
-|---|---|
-| `estado` | Mostra a altura, hash final, pendentes e integridade de cada nó. |
-| `emitir` | Pede código fictício e data; emite e confirma uma credencial. |
-| `apresentar` | Mostra em JSON a credencial atual da sessão. |
-| `verificar` | Mostra o resultado das cinco verificações. |
+| `estado` | Mostra altura, hash, pendências e validade das cadeias. |
+| `emitir` | Pede código fictício e data, depois emite e confirma a credencial. |
+| `apresentar` | Mostra a credencial atual em JSON. |
+| `verificar` | Mostra o resultado das cinco verificações da credencial atual. |
 | `revogar` | Regista e confirma a revogação da credencial atual. |
-| `sair` | Fecha os nós e termina sem apagar a sessão guardada. |
+| `sair` | Fecha os nós sem apagar os ficheiros da sessão. |
 
-Para observar o resultado de revogação, execute `verificar` depois de
-`revogar`. Se tentar `apresentar`, `verificar` ou `revogar` antes de emitir,
-o programa informa que ainda não existe credencial na sessão.
+## 9. Ficheiros, execução de testes e limites
 
-## 7. Ficheiros criados e testes
+Cada arranque cria uma pasta `data/demo/sessions/session-*`, sem apagar as
+anteriores. Inclui `node-1.json`, `node-2.json` e `node-3.json` (cadeias dos
+nós) e `credentials/*.json` (credenciais completas off-chain). As chaves são
+temporárias e ficam em memória; a sessão não é restaurada após fechar a GUI.
 
-Cada início cria uma pasta nova `data/demo/sessions/session-*`, sem apagar
-sessões anteriores. Nela:
+Para executar a suíte automatizada, use `mvn test`. Há testes de hash, Merkle,
+persistência, credenciais, consenso, rede e nós em processos separados.
 
-- `node-1.json`, `node-2.json`, `node-3.json`: cópia persistida da cadeia de
-  cada nó;
-- `credentials/*.json`: credenciais completas off-chain.
+Ao apresentar, seja claro sobre estes limites:
 
-As chaves da demonstração ficam em memória e são efémeras. Embora o projeto
-tenha um componente de armazenamento cifrado de chaves, a GUI atual ainda não o
-usa. Ao fechar a aplicação, a cadeia/credencial ficam nos ficheiros, mas a
-sessão não restaura a identidade e a chave privada antigas. O próximo arranque
-cria uma sessão nova.
-
-Para correr todos os testes:
-
-```bash
-mvn test
-```
-
-A suíte inclui testes de hashes, Merkle, persistência, credenciais, consenso,
-rede local e três processos P2P. O teste multi-processo mostra uma rede mais
-próxima do requisito de processos independentes do que a janela local.
-
-## 8. Limites que devemos explicar ao professor
-
-- É uma prova de conceito académica, não um sistema hospitalar.
-- O consenso PoA 2/3 é simplificado; não oferece garantias BFT formais.
-- Os nós da janela são três endpoints TCP, mas correm na mesma JVM/computador.
-- Os papéis de emissor, titular e verificador são separadores da mesma sessão,
-  não instituições/aplicações isoladas.
-- O consenso verifica blocos e votos; não chama toda a lógica de autorização e
-  validação de credencial em cada transação recebida.
-- A carteira do titular não é persistente nem importa credenciais de terceiros;
-  não há QR, gestão visual de emissores ou rotação de chaves na GUI.
-- Os certificados de consenso usados para sincronizar blocos entre peers ficam
-  em memória; recuperar um nó atrasado depois de todos os peers reiniciarem
-  ainda precisa de melhoria.
-- O verificador valida assinatura, integridade, emissor, estado e datas. Não
-  decide se a informação médica é verdadeira.
+- é uma prova de conceito académica, não um sistema clínico nem certificado
+  para produção;
+- os três nós gráficos correm na mesma máquina e JVM;
+- emissor, titular e verificador são áreas de uma única sessão, não aplicações
+  isoladas; a apresentação JSON é passada localmente;
+- o consenso PoA é simplificado e não oferece garantias BFT formais;
+- a carteira não é independente nem persistente, não tem QR e não importa
+  credenciais após reiniciar a sessão;
+- os validadores não executam toda a lógica de negócio da credencial;
+- o resultado de verificação é técnico e não confirma a ocorrência de um ato
+  médico.

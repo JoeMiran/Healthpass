@@ -150,7 +150,13 @@ public final class HealthPassDemo implements AutoCloseable {
 
     public synchronized CredentialVerifier.Resultado verificar() {
         if (latestCredential == null) throw new IllegalStateException("Emita primeiro uma credencial");
-        return new CredentialVerifier(chains.get(1), new IdentityService(chains.get(1))).verificar(latestCredential);
+        return verificar(latestCredential);
+    }
+
+    /** Verifica uma credencial apresentada contra a cadeia consultada pelo Hospital B. */
+    public synchronized CredentialVerifier.Resultado verificar(Credential apresentada) {
+        if (apresentada == null) throw new IllegalArgumentException("Apresente uma credencial para verificar");
+        return new CredentialVerifier(chains.get(1), new IdentityService(chains.get(1))).verificar(apresentada);
     }
 
     public synchronized void revogar() {
