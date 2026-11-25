@@ -2,6 +2,9 @@ package pt.healthpass.crypto;
 
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.security.GeneralSecurityException;
+import java.security.Signature;
+import java.util.Objects;
 
 /**
  * Servico de assinatura digital.
@@ -21,7 +24,8 @@ import java.security.PublicKey;
  *
  * <p><b>Origem:</b> adaptado de {@code utils.SecurityUtils.sign/verifySign} da
  * TemplarCoin. Por decisao do projeto mantem-se o algoritmo
- * <b>SHA3-256withRSA</b> (o mesmo do original).</p>
+ * <b>SHA256withRSA</b>, conforme a decisão criptográfica do HealthPass. A
+ * TemplarCoin original usava SHA3-256withRSA.</p>
  *
  * @author HealthPass
  */
@@ -39,9 +43,17 @@ public final class SignatureService {
      * @param chavePrivada chave privada do emissor
      * @return a assinatura em bytes
      */
-    // TODO (Etapa 6): implementar com Signature.getInstance("SHA3-256withRSA").
     public static byte[] assinar(byte[] dados, PrivateKey chavePrivada) {
-        throw new UnsupportedOperationException("A implementar na Etapa 6");
+        Objects.requireNonNull(dados, "dados nao podem ser null");
+        Objects.requireNonNull(chavePrivada, "chavePrivada nao pode ser null");
+        try {
+            Signature assinatura = Signature.getInstance("SHA256withRSA");
+            assinatura.initSign(chavePrivada);
+            assinatura.update(dados);
+            return assinatura.sign();
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Falha ao assinar dados com RSA", e);
+        }
     }
 
     /**
@@ -52,8 +64,15 @@ public final class SignatureService {
      * @param chavePublica chave publica do emissor
      * @return {@code true} se a assinatura for valida
      */
-    // TODO (Etapa 6): implementar com Signature.initVerify/verify.
     public static boolean verificar(byte[] dados, byte[] assinatura, PublicKey chavePublica) {
-        throw new UnsupportedOperationException("A implementar na Etapa 6");
+        if (dados == null || assinatura == null || chavePublica == null) return false;
+        try {
+            Signature verifier = Signature.getInstance("SHA256withRSA");
+            verifier.initVerify(chavePublica);
+            verifier.update(dados);
+            return verifier.verify(assinatura);
+        } catch (GeneralSecurityException | IllegalArgumentException e) {
+            return false;
+        }
     }
 }

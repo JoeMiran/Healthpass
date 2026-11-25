@@ -1,5 +1,11 @@
 package pt.healthpass.consensus;
 
+import java.nio.charset.StandardCharsets;
+import java.security.PrivateKey;
+import java.util.Base64;
+import java.util.Objects;
+import pt.healthpass.crypto.CanonicalSerializer;
+import pt.healthpass.crypto.SignatureService;
 import pt.healthpass.identity.DID;
 
 /**
@@ -60,4 +66,33 @@ public class ValidatorVote {
     public String getAssinatura() {
         return assinatura;
     }
+
+    /** Cria um voto assinado com SHA256withRSA. */
+    public static ValidatorVote assinar(DID validador, String hashBloco, boolean aprova,
+                                        PrivateKey chavePrivada) {
+        Objects.requireNonNull(validador, "validador obrigatório");
+        Objects.requireNonNull(hashBloco, "hashBloco obrigatório");
+        Objects.requireNonNull(chavePrivada, "chave privada obrigatória");
+        VotoPayload payload = new VotoPayload(validador.toString(), hashBloco, aprova);
+        byte[] dados = CanonicalSerializer.paraJson(payload).getBytes(StandardCharsets.UTF_8);
+        String assinatura = Base64.getEncoder().encodeToString(SignatureService.assinar(dados, chavePrivada));
+        return new ValidatorVote(validador, hashBloco, aprova, assinatura);
+    }
+
+    /** Verifica autorização, alvo do voto e assinatura criptográfica. */
+    public boolean isValid(ValidatorRegistry registry, String hashEsperado) {
+        if (registry == null || validador == null || hashBloco == null || assinatura == null
+                || !hashBloco.equals(hashEsperado)) return false;
+        Validator autorizado = registry.procurar(validador);
+        if (autorizado == null || autorizado.getPublicKey() == null) return false;
+        try {
+            VotoPayload payload = new VotoPayload(validador.toString(), hashBloco, aprova);
+            byte[] dados = CanonicalSerializer.paraJson(payload).getBytes(StandardCharsets.UTF_8);
+            return SignatureService.verificar(dados, Base64.getDecoder().decode(assinatura), autorizado.getPublicKey());
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private record VotoPayload(String validador, String hashBloco, boolean aprova) { }
 }

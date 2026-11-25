@@ -1,6 +1,9 @@
 package pt.healthpass.ledger;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Objects;
+import pt.healthpass.crypto.HashUtil;
 
 /**
  * Arvore de Merkle.
@@ -35,8 +38,10 @@ public class MerkleTree {
      * @param transacoes transacoes a resumir na arvore
      */
     public MerkleTree(List<Transaction> transacoes) {
-        // TODO (Etapa 5): converter cada transacao no seu hash.
-        this.folhas = null;
+        Objects.requireNonNull(transacoes, "transacoes nao podem ser null");
+        this.folhas = transacoes.stream()
+                .map(t -> Objects.requireNonNull(t, "transacao nao pode ser null").calcularHash())
+                .toList();
     }
 
     /**
@@ -44,17 +49,16 @@ public class MerkleTree {
      *
      * <p>Casos a tratar (e a testar):</p>
      * <ul>
-     *   <li>zero transacoes — devolver um valor fixo/documentado;</li>
+     *   <li>zero transacoes — SHA-256 da string vazia;</li>
      *   <li>uma transacao — a raiz e o hash dessa transacao;</li>
      *   <li>duas transacoes — combinar as duas;</li>
      *   <li>numero impar — duplicar a ultima folha.</li>
      * </ul>
      *
-     * @return a Merkle Root em Base64
+     * @return a Merkle Root em SHA-256 hexadecimal
      */
-    // TODO (Etapa 5): implementar o algoritmo descrito acima.
     public String getRoot() {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+        return calcularRaiz(folhas);
     }
 
     /**
@@ -63,8 +67,62 @@ public class MerkleTree {
      * @param transacao transacao a procurar
      * @return {@code true} se a transacao pertencer a arvore
      */
-    // TODO (Etapa 5): implementar a prova de inclusao.
     public boolean contem(Transaction transacao) {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+        return transacao != null && folhas.contains(transacao.calcularHash());
+    }
+
+    /** Retorna os hashes irmãos necessários para provar a inclusão. */
+    public List<String> provaInclusao(Transaction transacao) {
+        if (transacao == null) return List.of();
+        int indice = folhas.indexOf(transacao.calcularHash());
+        if (indice < 0) return List.of();
+        List<String> prova = new ArrayList<>();
+        List<String> nivel = new ArrayList<>(folhas);
+        int posicao = indice;
+        while (nivel.size() > 1) {
+            int irmao = (posicao % 2 == 0) ? Math.min(posicao + 1, nivel.size() - 1) : posicao - 1;
+            prova.add(nivel.get(irmao));
+            nivel = proximoNivel(nivel);
+            posicao /= 2;
+        }
+        return List.copyOf(prova);
+    }
+
+    /** Verifica uma prova produzida por {@link #provaInclusao(Transaction)}. */
+    public static boolean verificarProva(String hashFolha, int indice, int totalFolhas,
+                                         List<String> prova, String raizEsperada) {
+        if (hashFolha == null || raizEsperada == null || prova == null
+                || totalFolhas < 1 || indice < 0 || indice >= totalFolhas) return false;
+        String atual = hashFolha;
+        int posicao = indice;
+        int quantidade = totalFolhas;
+        int nivelProva = 0;
+        while (quantidade > 1) {
+            if (nivelProva >= prova.size() || prova.get(nivelProva) == null) return false;
+            String irmao = prova.get(nivelProva++);
+            atual = (posicao % 2 == 0)
+                    ? HashUtil.hash(atual + irmao)
+                    : HashUtil.hash(irmao + atual);
+            posicao /= 2;
+            quantidade = (quantidade + 1) / 2;
+        }
+        return nivelProva == prova.size() && atual.equals(raizEsperada);
+    }
+
+    private static String calcularRaiz(List<String> folhas) {
+        if (folhas.isEmpty()) return HashUtil.hash("");
+        List<String> nivel = new ArrayList<>(folhas);
+        while (nivel.size() > 1) nivel = proximoNivel(nivel);
+        return nivel.get(0);
+    }
+
+    private static List<String> proximoNivel(List<String> nivel) {
+        List<String> seguinte = new ArrayList<>((nivel.size() + 1) / 2);
+        for (int i = 0; i < nivel.size(); i += 2) {
+            String esquerda = nivel.get(i);
+            String direita = i + 1 < nivel.size() ? nivel.get(i + 1) : esquerda;
+            seguinte.add(HashUtil.hash(esquerda + direita));
+        }
+        return seguinte;
     }
 }

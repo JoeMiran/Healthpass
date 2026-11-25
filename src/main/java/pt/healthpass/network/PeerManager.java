@@ -1,7 +1,13 @@
 package pt.healthpass.network;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CopyOnWriteArrayList;
+import pt.healthpass.crypto.CanonicalSerializer;
 
 /**
  * Gestor de peers (nos vizinhos).
@@ -17,7 +23,11 @@ import java.util.List;
 public class PeerManager {
 
     /** Enderecos dos peers conhecidos, no formato host:porta. */
-    private final List<String> peers = new ArrayList<>();
+    private final List<String> peers = new CopyOnWriteArrayList<>();
+
+    private static final int CONNECT_TIMEOUT_MS = 800;
+    private static final int READ_TIMEOUT_MS = 1500;
+    private static final int MAX_MESSAGE_CHARS = 1_048_576;
 
     /**
      * Regista um peer.
@@ -25,7 +35,7 @@ public class PeerManager {
      * @param peer endereco no formato host:porta
      */
     public void adicionarPeer(String peer) {
-        peers.add(peer);
+        if (peer != null && !peers.contains(peer)) peers.add(peer);
     }
 
     /**
@@ -33,15 +43,39 @@ public class PeerManager {
      *
      * @param mensagem mensagem a difundir
      */
-    // TODO (Etapa 7): serializar em JSON e enviar por socket para cada peer.
     public void difundir(NetworkMessage mensagem) {
-        throw new UnsupportedOperationException("A implementar na Etapa 7");
+        for (String peer : peers) enviar(peer, mensagem);
+    }
+
+    /** Envia uma mensagem JSON numa ligação TCP curta para um peer. */
+    public boolean enviar(String peer, NetworkMessage mensagem) {
+        if (peer == null || mensagem == null) return false;
+        try {
+            String[] partes = peer.split(":", 2);
+            if (partes.length != 2) return false;
+            int porta = Integer.parseInt(partes[1]);
+            if (porta < 1 || porta > 65535) return false;
+            String json = CanonicalSerializer.paraJson(mensagem);
+            if (json.length() > MAX_MESSAGE_CHARS) return false;
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(partes[0], porta), CONNECT_TIMEOUT_MS);
+                socket.setSoTimeout(READ_TIMEOUT_MS);
+                BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+                        socket.getOutputStream(), StandardCharsets.UTF_8));
+                writer.write(json);
+                writer.write('\n');
+                writer.flush();
+            }
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
      * @return a lista de peers conhecidos.
      */
     public List<String> getPeers() {
-        return peers;
+        return List.copyOf(peers);
     }
 }

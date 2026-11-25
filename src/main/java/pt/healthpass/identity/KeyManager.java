@@ -1,6 +1,10 @@
 package pt.healthpass.identity;
 
 import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import pt.healthpass.config.HealthPassConfig;
 
 /**
  * Gestor de pares de chaves criptograficas.
@@ -23,9 +27,15 @@ public class KeyManager {
      * @param bits tamanho da chave (ex.: 3072)
      * @return o par de chaves gerado
      */
-    // TODO (Etapa 6): implementar com KeyPairGenerator ("RSA").
     public KeyPair gerarParDeChaves(int bits) {
-        throw new UnsupportedOperationException("A implementar na Etapa 6");
+        if (bits < 2048) throw new IllegalArgumentException("RSA requer pelo menos 2048 bits");
+        try {
+            KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+            generator.initialize(bits, new SecureRandom());
+            return generator.generateKeyPair();
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("Falha ao gerar par de chaves RSA", e);
+        }
     }
 
     /**
@@ -33,8 +43,7 @@ public class KeyManager {
      *
      * @return o par de chaves gerado
      */
-    // TODO (Etapa 6): usar HealthPassConfig para o tamanho por omissao.
     public KeyPair gerarParDeChaves() {
-        throw new UnsupportedOperationException("A implementar na Etapa 6");
+        return gerarParDeChaves(HealthPassConfig.TAMANHO_CHAVE_RSA);
     }
 }

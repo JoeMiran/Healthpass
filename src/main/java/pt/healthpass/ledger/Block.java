@@ -1,6 +1,11 @@
 package pt.healthpass.ledger;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Objects;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import pt.healthpass.crypto.CanonicalSerializer;
+import pt.healthpass.crypto.HashUtil;
 
 /**
  * Bloco da blockchain do HealthPass.
@@ -9,7 +14,7 @@ import java.util.List;
  * bloco anterior, formando uma <b>cadeia</b>: alterar um bloco antigo
  * invalida todos os seguintes.</p>
  *
- * <p>Campos previstos (a completar na Etapa 5):</p>
+ * <p>Campos do cabeçalho e conteúdo:</p>
  * <ul>
  *   <li>{@code height} — posicao do bloco na cadeia (0 = génesis);</li>
  *   <li>{@code timestamp} — momento de criacao;</li>
@@ -59,12 +64,30 @@ public class Block {
     public Block() {
     }
 
+    public Block(int height, long timestamp, String previousHash,
+                 List<Transaction> transactions, String validatorId) {
+        this.height = height;
+        this.timestamp = timestamp;
+        this.previousHash = Objects.requireNonNull(previousHash, "previousHash obrigatorio");
+        this.transactions = new ArrayList<>(Objects.requireNonNull(transactions, "transactions obrigatorias"));
+        this.validatorId = Objects.requireNonNull(validatorId, "validatorId obrigatorio");
+        this.merkleRoot = new MerkleTree(this.transactions).getRoot();
+        this.hash = calcularHash();
+    }
+
+    /** Génesis estável, idêntico em todos os nós que usem estas regras. */
+    public static Block genesis() {
+        return new Block(0, 0L, "0", List.of(), "GENESIS");
+    }
+
     /**
      * @return a altura (indice) do bloco.
      */
     public int getHeight() {
         return height;
     }
+
+    public long getTimestamp() { return timestamp; }
 
     /**
      * @return o hash do bloco anterior.
@@ -104,11 +127,11 @@ public class Block {
     /**
      * Calcula o hash deterministico deste bloco.
      *
-     * @return o hash do bloco em Base64
+     * @return o hash SHA-256 hexadecimal do bloco
      */
-    // TODO (Etapa 5): serializar cabecalho + merkleRoot de forma deterministica.
     public String calcularHash() {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+        return HashUtil.hash(CanonicalSerializer.paraJson(new BlockHeader(
+                height, timestamp, previousHash, merkleRoot, validatorId)));
     }
 
     /**
@@ -117,10 +140,29 @@ public class Block {
      *
      * @return {@code true} se o bloco for internamente consistente
      */
-    // TODO (Etapa 5): recalcular hash e comparar; conferir Merkle Root.
+    @JsonIgnore
     public boolean isValid() {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+        if (height < 0 || previousHash == null || validatorId == null || transactions == null
+                || merkleRoot == null || hash == null) return false;
+        try {
+            return merkleRoot.equals(new MerkleTree(transactions).getRoot())
+                    && hash.equals(calcularHash());
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
+
+    // Setters necessários à reconstrução explícita do formato JSON pelo Jackson.
+    public void setHeight(int height) { this.height = height; }
+    public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
+    public void setPreviousHash(String previousHash) { this.previousHash = previousHash; }
+    public void setMerkleRoot(String merkleRoot) { this.merkleRoot = merkleRoot; }
+    public void setTransactions(List<Transaction> transactions) { this.transactions = transactions; }
+    public void setValidatorId(String validatorId) { this.validatorId = validatorId; }
+    public void setHash(String hash) { this.hash = hash; }
+
+    private record BlockHeader(int height, long timestamp, String previousHash,
+                               String merkleRoot, String validatorId) { }
 
     @Override
     public String toString() {

@@ -1,5 +1,9 @@
 package pt.healthpass.ledger;
 
+import java.util.Objects;
+import pt.healthpass.crypto.CanonicalSerializer;
+import pt.healthpass.crypto.HashUtil;
+
 /**
  * Transacao da blockchain do HealthPass.
  *
@@ -44,10 +48,15 @@ public class Transaction {
      * @param signature assinatura do autor
      */
     public Transaction(TransactionType type, String payload, String signature) {
+        this(type, payload, signature, System.currentTimeMillis());
+    }
+
+    /** Construtor determinístico, útil para importar/registar transações. */
+    public Transaction(TransactionType type, String payload, String signature, long timestamp) {
         this.type = type;
         this.payload = payload;
         this.signature = signature;
-        this.timestamp = System.currentTimeMillis();
+        this.timestamp = timestamp;
     }
 
     /**
@@ -78,14 +87,20 @@ public class Transaction {
         return timestamp;
     }
 
+    public void setType(TransactionType type) { this.type = type; }
+    public void setPayload(String payload) { this.payload = payload; }
+    public void setSignature(String signature) { this.signature = signature; }
+    public void setTimestamp(long timestamp) { this.timestamp = timestamp; }
+
     /**
      * Calcula o hash desta transacao (usado na Merkle Tree).
      *
-     * @return o hash da transacao em Base64
+     * @return o hash SHA-256 hexadecimal da transacao
      */
-    // TODO (Etapa 5): CanonicalSerializer.paraJson(this) + HashUtil.hash.
     public String calcularHash() {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+        Objects.requireNonNull(type, "type da transacao nao pode ser null");
+        Objects.requireNonNull(payload, "payload da transacao nao pode ser null");
+        return HashUtil.hash(CanonicalSerializer.paraJson(this));
     }
 
     @Override

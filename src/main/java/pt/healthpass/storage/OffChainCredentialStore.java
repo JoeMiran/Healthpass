@@ -1,6 +1,20 @@
 package pt.healthpass.storage;
 
 import java.util.List;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Objects;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import pt.healthpass.config.HealthPassConfig;
+import pt.healthpass.credential.VaccinationCredential;
+import pt.healthpass.crypto.CanonicalSerializer;
 import pt.healthpass.credential.Credential;
 
 /**
@@ -25,14 +39,44 @@ import pt.healthpass.credential.Credential;
  */
 public class OffChainCredentialStore {
 
+    private final Path diretorio;
+
+    public OffChainCredentialStore() {
+        this(Path.of(HealthPassConfig.DIRETORIO_CREDENCIAIS));
+    }
+
+    public OffChainCredentialStore(Path diretorio) {
+        this.diretorio = Objects.requireNonNull(diretorio, "diretorio obrigatorio");
+    }
+
     /**
      * Guarda uma credencial localmente.
      *
      * @param credencial credencial a guardar
      */
-    // TODO (Etapa 6): persistir a credencial (ex.: ficheiro JSON por credencial).
     public void guardar(Credential credencial) {
-        throw new UnsupportedOperationException("A implementar na Etapa 6");
+        Objects.requireNonNull(credencial, "credencial obrigatoria");
+        validarId(credencial.getCredentialId());
+        if (!(credencial instanceof VaccinationCredential)) {
+            throw new IllegalArgumentException("Tipo de credencial ainda nao suportado pelo armazenamento");
+        }
+        Path destino = ficheiro(credencial.getCredentialId());
+        Path temporario = null;
+        try {
+            Files.createDirectories(diretorio);
+            temporario = Files.createTempFile(diretorio, "credential-", ".tmp");
+            Files.writeString(temporario, CanonicalSerializer.paraJson(credencial), StandardCharsets.UTF_8);
+            try {
+                Files.move(temporario, destino, StandardCopyOption.ATOMIC_MOVE,
+                        StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(temporario, destino, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Falha ao guardar credencial off-chain", e);
+        } finally {
+            if (temporario != null) try { Files.deleteIfExists(temporario); } catch (IOException ignored) { }
+        }
     }
 
     /**
@@ -41,9 +85,19 @@ public class OffChainCredentialStore {
      * @param credentialId identificador da credencial
      * @return a credencial, ou {@code null} se nao existir
      */
-    // TODO (Etapa 6): ler a credencial do armazenamento local.
     public Credential carregar(String credentialId) {
-        throw new UnsupportedOperationException("A implementar na Etapa 6");
+        Path caminho = ficheiro(credentialId);
+        if (!Files.exists(caminho)) return null;
+        try {
+            String json = Files.readString(caminho, StandardCharsets.UTF_8);
+            JsonNode raiz = new ObjectMapper().readTree(json);
+            if ("VaccinationCredential".equals(raiz.path("type").asText())) {
+                return CanonicalSerializer.deJson(json, VaccinationCredential.class);
+            }
+            throw new IllegalArgumentException("Tipo de credencial persistida desconhecido");
+        } catch (IOException e) {
+            throw new IllegalStateException("Falha ao ler credencial off-chain", e);
+        }
     }
 
     /**
@@ -51,8 +105,30 @@ public class OffChainCredentialStore {
      *
      * @return a lista de credenciais
      */
-    // TODO (Etapa 6): listar as credenciais guardadas.
     public List<Credential> listar() {
-        throw new UnsupportedOperationException("A implementar na Etapa 6");
+        if (!Files.isDirectory(diretorio)) return List.of();
+        try (var ficheiros = Files.list(diretorio)) {
+            List<Credential> resultado = new ArrayList<>();
+            for (Path caminho : ficheiros.filter(p -> p.getFileName().toString().endsWith(".json"))
+                    .sorted(Comparator.comparing(Path::toString)).toList()) {
+                String id = caminho.getFileName().toString().replaceFirst("\\.json$", "");
+                Credential credencial = carregar(id);
+                if (credencial != null) resultado.add(credencial);
+            }
+            return List.copyOf(resultado);
+        } catch (IOException e) {
+            throw new IllegalStateException("Falha ao listar credenciais off-chain", e);
+        }
+    }
+
+    private Path ficheiro(String credentialId) {
+        validarId(credentialId);
+        return diretorio.resolve(credentialId + ".json");
+    }
+
+    private static void validarId(String id) {
+        if (id == null || !id.matches("[A-Za-z0-9._-]{1,128}")) {
+            throw new IllegalArgumentException("credentialId inválido para nome de ficheiro");
+        }
     }
 }

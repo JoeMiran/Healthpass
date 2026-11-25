@@ -2,6 +2,10 @@ package pt.healthpass.ledger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Objects;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * Blockchain do HealthPass.
@@ -48,9 +52,17 @@ public class Blockchain {
      * <p>Nota: o génesis do HealthPass nao cria moedas (ao contrario da
      * TemplarCoin). Serve apenas para iniciar a cadeia.</p>
      */
-    // TODO (Etapa 5): criar bloco génesis sem valor monetario.
-    public void inicializar() {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+    public synchronized void inicializar() {
+        List<Block> guardados = repositorio.carregar();
+        if (guardados.isEmpty()) {
+            cadeia.clear();
+            cadeia.add(Block.genesis());
+            repositorio.guardar(cadeia);
+            return;
+        }
+        cadeia.clear();
+        cadeia.addAll(guardados);
+        if (!validarCadeia()) throw new IllegalStateException("Cadeia carregada invalida");
     }
 
     /**
@@ -58,9 +70,14 @@ public class Blockchain {
      *
      * @param transacao transacao a adicionar
      */
-    // TODO (Etapa 5): validar e adicionar a pendentes.
-    public void adicionarTransacao(Transaction transacao) {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+    public synchronized void adicionarTransacao(Transaction transacao) {
+        Objects.requireNonNull(transacao, "transacao nao pode ser null");
+        transacao.calcularHash(); // valida os campos obrigatórios
+        String hash = transacao.calcularHash();
+        boolean existeConfirmada = cadeia.stream().flatMap(b -> b.getTransactions().stream())
+                .anyMatch(t -> t.calcularHash().equals(hash));
+        boolean existePendente = pendentes.stream().anyMatch(t -> t.calcularHash().equals(hash));
+        if (!existeConfirmada && !existePendente) pendentes.add(transacao);
     }
 
     /**
@@ -68,9 +85,29 @@ public class Blockchain {
      *
      * @param bloco bloco a adicionar
      */
-    // TODO (Etapa 5): validar (previousHash, Merkle Root) e acrescentar a cadeia.
-    public void adicionarBloco(Block bloco) {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+    public synchronized void adicionarBloco(Block bloco) {
+        Objects.requireNonNull(bloco, "bloco nao pode ser null");
+        if (cadeia.isEmpty()) throw new IllegalStateException("Inicialize a cadeia antes de adicionar blocos");
+        Block anterior = getUltimoBloco();
+        if (!bloco.isValid() || bloco.getHeight() != cadeia.size()
+                || !anterior.getHash().equals(bloco.getPreviousHash())) {
+            throw new IllegalArgumentException("Bloco invalido ou fora de sequência");
+        }
+        List<Block> novaCadeia = new ArrayList<>(cadeia);
+        novaCadeia.add(bloco);
+        repositorio.guardar(novaCadeia);
+        cadeia.add(bloco);
+        Set<String> incluidos = new HashSet<>();
+        bloco.getTransactions().forEach(t -> incluidos.add(t.calcularHash()));
+        pendentes.removeIf(t -> incluidos.contains(t.calcularHash()));
+    }
+
+    /** Monta um bloco candidato com as transações atualmente pendentes. */
+    public synchronized Block criarBlocoPendente(String validatorId) {
+        if (cadeia.isEmpty()) throw new IllegalStateException("Inicialize a cadeia primeiro");
+        Block anterior = getUltimoBloco();
+        return new Block(cadeia.size(), System.currentTimeMillis(), anterior.getHash(),
+                new ArrayList<>(pendentes), validatorId);
     }
 
     /**
@@ -81,9 +118,19 @@ public class Blockchain {
      *
      * @return {@code true} se a cadeia estiver integra
      */
-    // TODO (Etapa 5): percorrer a cadeia e validar encadeamento.
     public boolean validarCadeia() {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+        if (cadeia.isEmpty() || cadeia.get(0) == null) return false;
+        Block esperadoGenesis = Block.genesis();
+        Block genesis = cadeia.get(0);
+        if (!genesis.isValid() || genesis.getHeight() != 0
+                || !esperadoGenesis.getHash().equals(genesis.getHash())) return false;
+        for (int i = 1; i < cadeia.size(); i++) {
+            Block atual = cadeia.get(i);
+            Block anterior = cadeia.get(i - 1);
+            if (atual == null || !atual.isValid() || atual.getHeight() != i
+                    || !anterior.getHash().equals(atual.getPreviousHash())) return false;
+        }
+        return true;
     }
 
     /**
@@ -97,14 +144,14 @@ public class Blockchain {
      * @return a lista de blocos da cadeia.
      */
     public List<Block> getCadeia() {
-        return cadeia;
+        return java.util.Collections.unmodifiableList(cadeia);
     }
 
     /**
      * @return a lista de transacoes pendentes.
      */
     public List<Transaction> getPendentes() {
-        return pendentes;
+        return java.util.Collections.unmodifiableList(pendentes);
     }
 
     /**

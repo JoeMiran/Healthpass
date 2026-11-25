@@ -1,6 +1,8 @@
 package pt.healthpass.consensus;
 
 import pt.healthpass.identity.DID;
+import java.security.PublicKey;
+import java.util.Objects;
 
 /**
  * Validador autorizado.
@@ -16,12 +18,18 @@ import pt.healthpass.identity.DID;
 public class Validator {
 
     private final DID did;
+    private final PublicKey publicKey;
 
     /**
      * @param did DID do validador
      */
     public Validator(DID did) {
-        this.did = did;
+        this(did, null);
+    }
+
+    public Validator(DID did, PublicKey publicKey) {
+        this.did = Objects.requireNonNull(did, "DID do validador obrigatorio");
+        this.publicKey = publicKey;
     }
 
     /**
@@ -30,6 +38,8 @@ public class Validator {
     public DID getDid() {
         return did;
     }
+
+    public PublicKey getPublicKey() { return publicKey; }
 
     @Override
     public String toString() {

@@ -2,6 +2,8 @@ package pt.healthpass.consensus;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Comparator;
 import pt.healthpass.identity.DID;
 
 /**
@@ -25,7 +27,10 @@ public class ValidatorRegistry {
      * @param validador validador a adicionar
      */
     public void adicionar(Validator validador) {
+        Objects.requireNonNull(validador, "validador obrigatorio");
+        if (ehValidador(validador.getDid())) throw new IllegalArgumentException("Validador duplicado: " + validador.getDid());
         validadores.add(validador);
+        validadores.sort(Comparator.comparing(v -> v.getDid().toString()));
     }
 
     /**
@@ -34,9 +39,8 @@ public class ValidatorRegistry {
      * @param did DID a verificar
      * @return {@code true} se for validador autorizado
      */
-    // TODO (Etapa 7): comparar com a lista de validadores.
     public boolean ehValidador(DID did) {
-        throw new UnsupportedOperationException("A implementar na Etapa 7");
+        return did != null && validadores.stream().anyMatch(v -> v.getDid().equals(did));
     }
 
     /**
@@ -50,6 +54,11 @@ public class ValidatorRegistry {
      * @return a lista de validadores autorizados.
      */
     public List<Validator> getValidadores() {
-        return validadores;
+        return List.copyOf(validadores);
+    }
+
+    public Validator procurar(DID did) {
+        if (did == null) return null;
+        return validadores.stream().filter(v -> v.getDid().equals(did)).findFirst().orElse(null);
     }
 }

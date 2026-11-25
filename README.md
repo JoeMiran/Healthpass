@@ -1,92 +1,68 @@
 # HealthPass
 
-Sistema de **identidade digital descentralizada (Blockchain ID)** aplicado à
-área da saúde. Permite emitir, guardar e verificar **credenciais de saúde**
-(primeiro caso de uso: certificados de vacinação **sintéticos**) sobre uma
-blockchain permissionada.
+Protótipo académico de **identidade digital descentralizada aplicada à saúde**.
+A demonstração usa credenciais fictícias de vacinação para mostrar emissão,
+assinatura, registo numa blockchain local replicada, apresentação, verificação e
+revogação.
 
-Este projeto parte do núcleo blockchain da **TemplarCoin** (projeto da unidade
-curricular de Sistemas Distribuídos) e adapta-o para identidade e credenciais,
-removendo toda a lógica de criptomoeda.
+## O que a aplicação faz
 
-## Objetivo
+Ao iniciar, prepara três nós TCP locais, regista um emissor e um titular de
+demonstração, e abre uma interface com os separadores **Emissor**, **Titular**,
+**Verificador** e **Rede**. Pode emitir uma credencial sintética, ver a sua
+apresentação JSON, validar assinatura/hash/estado e observar a revogação. Os
+nós mantêm cadeias persistidas separadas e usam PoA simplificado com quorum de
+2 em 3.
 
-- Reaproveitar a blockchain existente da TemplarCoin (blocos, transações,
-  criptografia) em vez de criar uma nova de raiz.
-- Construir os módulos de **identidade (DID)**, **credenciais**, **consenso
-  (PoA simplificado)** e **rede P2P**.
-- Servir de base de estudo, com código comentado em português.
+O projeto adapta conceitos e partes do núcleo blockchain da TemplarCoin para
+identidade e credenciais; a arquitetura explica o que foi reaproveitado e o que
+foi acrescentado para o HealthPass.
 
-## Estado do projeto
+É uma prova de conceito, não um sistema clínico. Os três nós da aplicação
+gráfica correm na mesma máquina e JVM; os separadores simulam os papéis da
+proposta, não são aplicações hospitalares independentes. Use apenas dados
+fictícios. A credencial completa fica em ficheiro local off-chain; a blockchain
+guarda referências e eventos técnicos. As limitações estão explicadas nos
+documentos abaixo.
 
-**Esqueleto inicial (primeiro commit).** A estrutura de pacotes e as classes
-existem com documentação e TODO, mas a lógica ainda não está implementada. Ver
-`docs/ANALISE_TEMPLARCOIN.md` e `docs/MIGRACAO_TEMPLARCOIN.md`.
+## Como executar
 
-## Tecnologias
-
-- **Java 21 (LTS)**
-- **Apache Maven** (build)
-- **Jackson** (JSON)
-- **JUnit 5** (testes)
-- Criptografia da plataforma Java: `SHA3-256`, `SHA3-256withRSA`, `AES/GCM`,
-  `PBKDF2-HMAC-SHA256` (herdada da TemplarCoin)
-
-## Requisitos para executar
-
-- JDK 21 ou superior
-- Apache Maven 3.9 ou superior
-- Internet na primeira compilação (descarregar dependências)
-
-## Como compilar
+Requisitos: JDK 21 ou superior e Maven 3.9 ou superior. Abra um terminal na
+pasta do projeto e execute:
 
 ```bash
-mvn clean compile
+mvn exec:java -Dexec.mainClass=pt.healthpass.app.HealthPassApplication
 ```
 
-## Como executar os testes
+Para iniciar a versão de terminal em vez da janela gráfica:
+
+```bash
+mvn exec:java -Dexec.mainClass=pt.healthpass.app.HealthPassApplication -Dexec.args=--cli
+```
+
+Na primeira execução, Maven pode precisar de Internet para obter dependências.
+Os dados de cada demonstração são criados em `data/demo/sessions/`; o programa
+não apaga sessões anteriores.
+
+Para validar o projeto com testes:
 
 ```bash
 mvn test
 ```
 
-## Como gerar o jar
+## Documentação
 
-```bash
-mvn package
-```
+- [Como executar e entender a aplicação](docs/COMO_FUNCIONA.md): tutorial de
+  utilização passo a passo, o significado de cada separador e as diferenças
+  entre a proposta do relatório e a demonstração atual.
+- [Arquitetura do HealthPass](docs/ARQUITETURA.md): diagrama de classes,
+  blockchain, SHA-256, Merkle, consenso, P2P e localização das implementações
+  no código.
 
-## Estrutura dos diretórios
+## Tecnologias
 
-```
-HealthPass/
-├── pom.xml                     # configuracao Maven
-├── README.md
-├── .gitignore
-├── data/
-│   └── demo/                   # dados sinteticos de demonstracao
-├── docs/
-│   ├── ANALISE_TEMPLARCOIN.md  # analise do projeto original
-│   ├── MIGRACAO_TEMPLARCOIN.md # mapa de migracao
-│   ├── ARQUITETURA.md          # arquitetura por camadas
-│   └── GUIA_EXECUCAO.md        # como compilar/executar
-└── src/
-    ├── main/java/pt/healthpass/
-    │   ├── app/                # arranque da aplicacao
-    │   ├── identity/           # DIDs e identidades
-    │   ├── credential/         # credenciais de saude
-    │   ├── crypto/             # hash, assinaturas, JSON canonico
-    │   ├── ledger/             # blocos, transacoes, Merkle Tree, cadeia
-    │   ├── consensus/          # Proof of Authority simplificado
-    │   ├── network/            # rede P2P (TCP + JSON)
-    │   ├── storage/            # persistencia local
-    │   ├── gui/                # interfaces Swing
-    │   └── config/             # configuracao
-    └── test/java/pt/healthpass/
-```
-
-## Origem dos componentes
-
-Os ficheiros reutilizados da TemplarCoin, e a respetiva adaptação, estão
-documentados em `docs/MIGRACAO_TEMPLARCOIN.md`. A TemplarCoin original **não é
-alterada** por este projeto.
+- Java 21 e Maven
+- Jackson para JSON
+- SHA-256 para hashes e `SHA256withRSA` para assinaturas
+- Blockchain própria, árvore de Merkle, PoA simplificado e comunicação TCP P2P
+- Swing para a interface gráfica

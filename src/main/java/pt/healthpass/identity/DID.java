@@ -39,7 +39,11 @@ public final class DID {
      */
     public DID(String identificador) {
         // Validacao de parametros: o identificador e obrigatorio.
-        this.identificador = Objects.requireNonNull(identificador, "identificador nao pode ser nulo");
+        Objects.requireNonNull(identificador, "identificador nao pode ser nulo");
+        if (!identificador.matches("[A-Za-z0-9._-]{1,128}")) {
+            throw new IllegalArgumentException("Identificador DID inválido");
+        }
+        this.identificador = identificador;
     }
 
     /**
@@ -49,9 +53,10 @@ public final class DID {
      * @param did completo
      * @return o DID correspondente
      */
-    // TODO (Etapa 6): validar o prefixo e extrair a parte especifica.
     public static DID parse(String did) {
-        throw new UnsupportedOperationException("A implementar na Etapa 6");
+        Objects.requireNonNull(did, "did nao pode ser null");
+        if (!did.startsWith(PREFIXO)) throw new IllegalArgumentException("Prefixo DID HealthPass invalido");
+        return new DID(did.substring(PREFIXO.length()));
     }
 
     /**

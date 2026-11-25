@@ -30,6 +30,19 @@ public class VaccinationCredential extends Credential {
         this.type = "VaccinationCredential";
     }
 
+    public VaccinationCredential(String credentialId, String issuerDID, String holderDID,
+                                 String issuedAt, String expiresAt, String vaccineCode,
+                                 String administrationDate) {
+        this();
+        this.credentialId = credentialId;
+        this.issuerDID = issuerDID;
+        this.holderDID = holderDID;
+        this.issuedAt = issuedAt;
+        this.expiresAt = expiresAt;
+        this.vaccineCode = vaccineCode;
+        this.administrationDate = administrationDate;
+    }
+
     /**
      * @return o codigo da vacina.
      */
@@ -43,4 +56,7 @@ public class VaccinationCredential extends Credential {
     public String getAdministrationDate() {
         return administrationDate;
     }
+
+    public void setVaccineCode(String vaccineCode) { this.vaccineCode = vaccineCode; }
+    public void setAdministrationDate(String administrationDate) { this.administrationDate = administrationDate; }
 }

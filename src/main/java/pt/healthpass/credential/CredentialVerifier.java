@@ -1,5 +1,14 @@
 package pt.healthpass.credential;
 
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Base64;
+import pt.healthpass.crypto.CanonicalSerializer;
+import pt.healthpass.crypto.SignatureService;
+import pt.healthpass.identity.DID;
+import pt.healthpass.ledger.Transaction;
+import pt.healthpass.ledger.TransactionType;
+
 import pt.healthpass.identity.IdentityService;
 import pt.healthpass.ledger.Blockchain;
 
@@ -70,8 +79,75 @@ public class CredentialVerifier {
      * @param credencial credencial a verificar
      * @return o resultado com cada verificacao separada
      */
-    // TODO (Etapa 6): verificar assinatura, hash, emissor, estado e validade.
     public Resultado verificar(Credential credencial) {
-        throw new UnsupportedOperationException("A implementar na Etapa 6");
+        if (credencial == null) return new Resultado(false, false, false, false, false);
+        DID issuer;
+        try {
+            issuer = DID.parse(credencial.getIssuerDID());
+        } catch (RuntimeException e) {
+            return new Resultado(false, false, false, false, false);
+        }
+        var publicKey = identityService.getChavePublica(issuer);
+        boolean autorizado = identityService.ehEmissorAutorizado(issuer) && publicKey != null;
+
+        boolean assinaturaValida = false;
+        try {
+            byte[] dadosAssinados = CanonicalSerializer.paraJsonSemAssinatura(credencial)
+                    .getBytes(StandardCharsets.UTF_8);
+            assinaturaValida = credencial.getSignature() != null && publicKey != null
+                    && SignatureService.verificar(dadosAssinados,
+                            Base64.getDecoder().decode(credencial.getSignature()), publicKey);
+        } catch (RuntimeException ignored) { }
+
+        CredentialTransactionData.Issuance emissao = null;
+        if (credencial.getCredentialId() != null) {
+            for (var bloco : blockchain.getCadeia()) {
+                for (Transaction tx : bloco.getTransactions()) {
+                    if (tx.getType() != TransactionType.CREDENTIAL_ISSUED) continue;
+                    try {
+                        var candidato = CanonicalSerializer.deJson(tx.getPayload(), CredentialTransactionData.Issuance.class);
+                        if (!credencial.getCredentialId().equals(candidato.credentialId())) continue;
+                        boolean assinaturaTx = publicKey != null && issuer.toString().equals(candidato.issuerDID())
+                                && SignatureService.verificar(tx.getPayload().getBytes(StandardCharsets.UTF_8),
+                                        Base64.getDecoder().decode(tx.getSignature()), publicKey);
+                        if (assinaturaTx) emissao = candidato;
+                    } catch (RuntimeException ignored) { }
+                }
+            }
+        }
+        boolean hashCorresponde = emissao != null
+                && emissao.credentialHash().equals(credencial.calcularHash())
+                && emissao.issuerDID().equals(credencial.getIssuerDID())
+                && emissao.holderDID().equals(credencial.getHolderDID());
+
+        boolean revogada = false;
+        if (emissao != null && publicKey != null) {
+            for (var bloco : blockchain.getCadeia()) {
+                for (Transaction tx : bloco.getTransactions()) {
+                    if (tx.getType() != TransactionType.CREDENTIAL_REVOKED) continue;
+                    try {
+                        var revogacao = CanonicalSerializer.deJson(tx.getPayload(), CredentialTransactionData.Revocation.class);
+                        if (credencial.getCredentialId().equals(revogacao.credentialId())
+                                && issuer.toString().equals(revogacao.issuerDID())
+                                && SignatureService.verificar(tx.getPayload().getBytes(StandardCharsets.UTF_8),
+                                        Base64.getDecoder().decode(tx.getSignature()), publicKey)) {
+                            revogada = true;
+                        }
+                    } catch (RuntimeException ignored) { }
+                }
+            }
+        }
+        boolean ativa = emissao != null && !revogada;
+        boolean dentroValidade;
+        try {
+            Instant issuedAt = Instant.parse(credencial.getIssuedAt());
+            Instant agora = Instant.now();
+            dentroValidade = !issuedAt.isAfter(agora)
+                    && (credencial.getExpiresAt() == null
+                        || agora.isBefore(Instant.parse(credencial.getExpiresAt())));
+        } catch (RuntimeException e) {
+            dentroValidade = false;
+        }
+        return new Resultado(assinaturaValida, hashCorresponde, autorizado, ativa, dentroValidade);
     }
 }

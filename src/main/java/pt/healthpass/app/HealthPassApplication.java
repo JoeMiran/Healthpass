@@ -1,45 +1,66 @@
 package pt.healthpass.app;
 
-import pt.healthpass.config.HealthPassConfig;
+import java.awt.GraphicsEnvironment;
+import java.util.Scanner;
+import javax.swing.SwingUtilities;
+import pt.healthpass.gui.HealthPassDashboard;
 
-/**
- * Ponto de entrada da aplicacao HealthPass.
- *
- * <p>Este e o {@code main} do projeto. Numa versao completa, devera:</p>
- * <ol>
- *   <li>Carregar a configuracao ({@link HealthPassConfig}).</li>
- *   <li>Inicializar a blockchain (ledger).</li>
- *   <li>Criar/carregar as identidades de demonstracao.</li>
- *   <li>Arrancar os nos da rede P2P.</li>
- *   <li>Abrir a interface adequada ao papel do utilizador.</li>
- * </ol>
- *
- * <p><b>Estado atual:</b> esqueleto inicial. O {@code main} apenas confirma que
- * o projeto arranca e lista o que falta implementar. Nao executa ainda nenhuma
- * funcionalidade de negocio.</p>
- *
- * <p><b>Origem:</b> novo ponto de entrada (a TemplarCoin arrancava por
- * {@code templarCoin.ui.TemplarLogin}).</p>
- *
- * @author HealthPass
- */
+/** Arranque da demonstração HealthPass (interface gráfica ou terminal). */
 public final class HealthPassApplication {
+    private HealthPassApplication() { }
 
-    /** Classe de aplicacao: nao deve ser instanciada. */
-    private HealthPassApplication() {
-        // Construtor privado.
+    public static void main(String[] args) {
+        if (args.length > 0 && ("--help".equals(args[0]) || "-h".equals(args[0]))) {
+            System.out.println("HealthPass — demonstração local\nUso: mvn exec:java [-Dexec.args=--cli]\n"
+                    + "Sem argumentos abre a interface gráfica; --cli abre o menu de terminal.");
+            return;
+        }
+        if (args.length > 0 && "--cli".equals(args[0]) || GraphicsEnvironment.isHeadless()) {
+            executarTerminal();
+            return;
+        }
+        SwingUtilities.invokeLater(() -> new HealthPassDashboard().abrir());
     }
 
-    /**
-     * Metodo principal.
-     *
-     * @param args argumentos de linha de comandos (nao usados por agora)
-     */
-    public static void main(String[] args) {
-        System.out.println("HealthPass - esqueleto inicial");
-        System.out.println("Configuracao: chaves RSA de "
-                + HealthPassConfig.TAMANHO_CHAVE_RSA + " bits, quorum "
-                + HealthPassConfig.QUORUM + " de " + HealthPassConfig.NUM_VALIDADORES);
-        System.out.println("Etapas a implementar: ver docs/GUIA_EXECUCAO.md e os TODO no codigo.");
+    private static void executarTerminal() {
+        HealthPassDemo demo = null;
+        try (Scanner scanner = new Scanner(System.in)) {
+            System.out.println("A iniciar três nós HealthPass locais. Aguarde...");
+            demo = new HealthPassDemo();
+            System.out.println("Rede pronta. DIDs e registo inicial já foram confirmados por quorum.");
+            System.out.println("Só use dados fictícios. Comandos: emitir, apresentar, verificar, revogar, estado, sair");
+            boolean continuar = true;
+            while (continuar) {
+                System.out.print("healthpass> ");
+                if (!scanner.hasNextLine()) break;
+                String comando = scanner.nextLine().trim().toLowerCase();
+                try {
+                    switch (comando) {
+                        case "emitir" -> {
+                            System.out.print("Código fictício da vacina: ");
+                            String codigo = scanner.nextLine();
+                            System.out.print("Data (AAAA-MM-DD, Enter = hoje): ");
+                            String data = scanner.nextLine();
+                            var credential = demo.emitir(codigo, data);
+                            System.out.println("Credencial emitida e confirmada: " + credential.getCredentialId());
+                        }
+                        case "apresentar" -> System.out.println(demo.apresentar().paraJson());
+                        case "verificar" -> System.out.println(demo.verificar());
+                        case "revogar" -> { demo.revogar(); System.out.println("Revogação registada e confirmada."); }
+                        case "estado" -> System.out.print(demo.estado());
+                        case "sair", "exit", "quit" -> continuar = false;
+                        case "" -> { }
+                        default -> System.out.println("Comando desconhecido. Use: emitir, apresentar, verificar, revogar, estado, sair");
+                    }
+                } catch (RuntimeException e) {
+                    System.out.println("Operação não concluída: " + e.getMessage());
+                }
+            }
+        } catch (RuntimeException e) {
+            System.err.println("Não foi possível iniciar a demonstração: " + e.getMessage());
+        } finally {
+            if (demo != null) demo.close();
+            System.out.println("Nós parados. Os ficheiros da sessão foram preservados.");
+        }
     }
 }

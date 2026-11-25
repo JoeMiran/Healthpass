@@ -1,5 +1,7 @@
 package pt.healthpass.credential;
 
+import pt.healthpass.crypto.CanonicalSerializer;
+
 /**
  * Apresentacao de uma credencial.
  *
@@ -44,8 +46,7 @@ public class CredentialPresentation {
      *
      * @return o JSON da apresentacao
      */
-    // TODO (Etapa 8): usar CanonicalSerializer para exportar.
     public String paraJson() {
-        throw new UnsupportedOperationException("A implementar na Etapa 8");
+        return CanonicalSerializer.paraJson(this);
     }
 }

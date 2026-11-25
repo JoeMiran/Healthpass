@@ -1,6 +1,9 @@
 package pt.healthpass.consensus;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Certificado de consenso.
@@ -30,8 +33,8 @@ public class ConsensusCertificate {
      * @param votos votos recolhidos
      */
     public ConsensusCertificate(String hashBloco, List<ValidatorVote> votos) {
-        this.hashBloco = hashBloco;
-        this.votos = votos;
+        this.hashBloco = Objects.requireNonNull(hashBloco, "hashBloco obrigatório");
+        this.votos = List.copyOf(Objects.requireNonNull(votos, "votos obrigatórios"));
     }
 
     /**
@@ -55,8 +58,14 @@ public class ConsensusCertificate {
      * @param registry registo de validadores autorizados
      * @return o numero de votos de aprovacao validos
      */
-    // TODO (Etapa 7): filtrar votos duplicados/invalidos e contar aprovacoes.
     public int contarAprovacoes(ValidatorRegistry registry) {
-        throw new UnsupportedOperationException("A implementar na Etapa 7");
+        if (registry == null) return 0;
+        Map<String, Long> porValidador = votos.stream().filter(Objects::nonNull)
+                .filter(v -> v.getValidador() != null)
+                .collect(Collectors.groupingBy(v -> v.getValidador().toString(), Collectors.counting()));
+        return (int) votos.stream().filter(Objects::nonNull)
+                .filter(v -> v.getValidador() != null)
+                .filter(v -> porValidador.getOrDefault(v.getValidador().toString(), 0L) == 1L)
+                .filter(v -> v.isAprova() && v.isValid(registry, hashBloco)).count();
     }
 }

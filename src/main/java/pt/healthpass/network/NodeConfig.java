@@ -31,6 +31,9 @@ public class NodeConfig {
      * @param porta porta de escuta (ex.: 5001)
      */
     public NodeConfig(String host, int porta) {
+        if (host == null || host.isBlank() || porta < 1 || porta > 65535) {
+            throw new IllegalArgumentException("Host/porta inválidos");
+        }
         this.host = host;
         this.porta = porta;
     }
@@ -41,7 +44,10 @@ public class NodeConfig {
      * @param peer peer a adicionar
      */
     public void adicionarPeer(String peer) {
-        peersIniciais.add(peer);
+        if (peer == null || !peer.matches("[^:]+:[0-9]{1,5}")) {
+            throw new IllegalArgumentException("Peer deve estar no formato host:porta");
+        }
+        if (!peersIniciais.contains(peer) && !peer.equals(host + ":" + porta)) peersIniciais.add(peer);
     }
 
     /**
@@ -62,6 +68,6 @@ public class NodeConfig {
      * @return a lista de peers iniciais.
      */
     public List<String> getPeersIniciais() {
-        return peersIniciais;
+        return List.copyOf(peersIniciais);
     }
 }

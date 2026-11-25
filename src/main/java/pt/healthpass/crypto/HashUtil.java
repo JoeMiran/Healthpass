@@ -1,5 +1,10 @@
 package pt.healthpass.crypto;
 
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+import java.util.Objects;
+
 /**
  * Utilitario de calculo de hash.
  *
@@ -16,7 +21,7 @@ package pt.healthpass.crypto;
  * digital de uma credencial (on-chain) sem revelar os dados completos.</p>
  *
  * <p><b>Origem:</b> adaptado de {@code utils.SecurityUtils.getHash} da TemplarCoin.
- * O algoritmo usado e o <b>SHA3-256</b>, o mesmo do projeto original.</p>
+ * O algoritmo definido para o HealthPass e <b>SHA-256</b>.</p>
  *
  * <p><b>Nota:</b> nao implementar o algoritmo manualmente. A plataforma Java
  * ja fornece {@link java.security.MessageDigest}.</p>
@@ -31,18 +36,16 @@ public final class HashUtil {
     }
 
     /**
-     * Calcula o hash SHA3-256 de um texto e devolve-o em Base64.
+     * Calcula SHA-256 de texto UTF-8 e devolve 64 caracteres hexadecimais
+     * minúsculos.
      *
-     * <p>Este metodo sera implementado na Etapa 5 (Blockchain). Devera usar
-     * {@code MessageDigest.getInstance("SHA3-256")} e codificar o resultado
-     * com {@link java.util.Base64}.</p>
-     *
+     * <p>O texto é convertido em bytes UTF-8 antes do cálculo.</p>
      * @param texto texto de entrada (nao pode ser {@code null})
-     * @return o hash em Base64
+     * @return hash hexadecimal
      */
-    // TODO (Etapa 5): implementar com MessageDigest SHA3-256 + Base64.
     public static String hash(String texto) {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+        Objects.requireNonNull(texto, "texto nao pode ser null");
+        return hash(texto.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     /**
@@ -50,10 +53,14 @@ public final class HashUtil {
      * binarios, como chaves publicas).
      *
      * @param dados bytes de entrada
-     * @return o hash em Base64
+     * @return hash hexadecimal
      */
-    // TODO (Etapa 5): variante de hash(byte[]) para dados binarios.
     public static String hash(byte[] dados) {
-        throw new UnsupportedOperationException("A implementar na Etapa 5");
+        Objects.requireNonNull(dados, "dados nao podem ser null");
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(dados));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 nao esta disponivel nesta JVM", e);
+        }
     }
 }

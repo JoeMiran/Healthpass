@@ -1,5 +1,7 @@
 package pt.healthpass.config;
 
+import java.util.Set;
+
 /**
  * Configuracao global do HealthPass.
  *
@@ -42,6 +44,9 @@ public final class HealthPassConfig {
      * Quorum do consenso: maioria estrita de 2 em 3.
      */
     public static final int QUORUM = 2;
+
+    /** DIDs explicitamente confiáveis como emissores na demonstração local. */
+    public static final Set<String> EMISSORES_DEMO_AUTORIZADOS = Set.of("did:healthpass:issuer-demo-01");
 
     /** Caminho do ficheiro da cadeia (persistencia). */
     public static final String FICHEIRO_CADEIA = "data/demo/chain.json";

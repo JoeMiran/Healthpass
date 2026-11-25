@@ -2,6 +2,7 @@ package pt.healthpass.consensus;
 
 import pt.healthpass.identity.DID;
 import pt.healthpass.ledger.Block;
+import java.util.Objects;
 
 /**
  * Proposta de bloco.
@@ -27,8 +28,8 @@ public class BlockProposal {
      * @param proponente DID do validador que propoe
      */
     public BlockProposal(Block bloco, DID proponente) {
-        this.bloco = bloco;
-        this.proponente = proponente;
+        this.bloco = Objects.requireNonNull(bloco, "bloco obrigatório");
+        this.proponente = Objects.requireNonNull(proponente, "proponente obrigatório");
     }
 
     /**

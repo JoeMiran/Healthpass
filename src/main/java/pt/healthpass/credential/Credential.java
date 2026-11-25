@@ -1,5 +1,8 @@
 package pt.healthpass.credential;
 
+import pt.healthpass.crypto.CanonicalSerializer;
+import pt.healthpass.crypto.HashUtil;
+
 /**
  * Credencial digital generica.
  *
@@ -97,6 +100,16 @@ public class Credential {
         return expiresAt;
     }
 
+    public String getIssuedAt() { return issuedAt; }
+
+    public void setCredentialId(String credentialId) { this.credentialId = credentialId; }
+    public void setType(String type) { this.type = type; }
+    public void setIssuerDID(String issuerDID) { this.issuerDID = issuerDID; }
+    public void setHolderDID(String holderDID) { this.holderDID = holderDID; }
+    public void setIssuedAt(String issuedAt) { this.issuedAt = issuedAt; }
+    public void setExpiresAt(String expiresAt) { this.expiresAt = expiresAt; }
+    public void setSignature(String signature) { this.signature = signature; }
+
     /**
      * Calcula o hash SHA-256 da credencial (o que vai para a blockchain).
      *
@@ -104,9 +117,8 @@ public class Credential {
      *
      * @return o hash da representacao canonica, sem o campo signature
      */
-    // TODO (Etapa 6): usar CanonicalSerializer + HashUtil.
     public String calcularHash() {
-        throw new UnsupportedOperationException("A implementar na Etapa 6");
+        return HashUtil.hash(CanonicalSerializer.paraJsonSemAssinatura(this));
     }
 
     @Override

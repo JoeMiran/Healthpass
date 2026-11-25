@@ -26,6 +26,7 @@ public class NetworkMessage {
     private String id;
     private MessageType type;
     private String payload;
+    private String sender;
 
     /** Construtor vazio para serializacao JSON. */
     public NetworkMessage() {
@@ -37,9 +38,14 @@ public class NetworkMessage {
      * @param payload conteudo em JSON
      */
     public NetworkMessage(String id, MessageType type, String payload) {
+        this(id, type, payload, null);
+    }
+
+    public NetworkMessage(String id, MessageType type, String payload, String sender) {
         this.id = id;
         this.type = type;
         this.payload = payload;
+        this.sender = sender;
     }
 
     /**
@@ -62,4 +68,10 @@ public class NetworkMessage {
     public String getPayload() {
         return payload;
     }
+
+    public String getSender() { return sender; }
+    public void setId(String id) { this.id = id; }
+    public void setType(MessageType type) { this.type = type; }
+    public void setPayload(String payload) { this.payload = payload; }
+    public void setSender(String sender) { this.sender = sender; }
 }

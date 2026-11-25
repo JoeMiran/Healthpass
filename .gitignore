@@ -14,6 +14,10 @@ target/
 data/*.bc
 data/*.json
 data/*.dat
+data/demo/chain.json
+data/demo/credentials/
+data/demo/keys/
+data/demo/sessions/
 
 # Ficheiros do IDE (NetBeans, IntelliJ, Eclipse, VS Code)
 nbproject/private/
