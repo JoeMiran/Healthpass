@@ -1,14 +1,6 @@
-# Como apresentar e demonstrar o HealthPass
+# Demonstração do HealthPass
 
-Este guia acompanha a interface atual e foi pensado para preparar uma
-apresentação do projeto. Explica a ideia, o que dizer em cada ecrã, os passos a
-executar e os resultados que se devem observar. O HealthPass é uma prova de
-conceito académica com dados fictícios; não é um sistema hospitalar.
-
-Para estudar a implementação por classes, consulte também
-[Arquitetura do HealthPass](ARQUITETURA.md).
-
-## 1. A ideia em poucas palavras
+## 1. A ideia
 
 O cenário é este: o **Hospital A** emite uma credencial fictícia de vacinação
 para um **titular**. Mais tarde, o titular apresenta essa credencial ao
